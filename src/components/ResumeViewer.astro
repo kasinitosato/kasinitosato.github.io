@@ -4,11 +4,11 @@
 // Drag to move it, pinch (or Ctrl/Cmd + scroll) to zoom, double-tap or double-click to zoom in.
 // Without JavaScript the links simply go to the Resume page.
 //
-// The picture is src/assets/resume-page.png (remake it with: sh tools/resume-image.sh).
+// The picture is src/assets/resume-page-*.png (remake it with: sh tools/resume-image.sh).
 // The contact line at the top of the resume has clickable areas over it (`hotspots` below,
 // in percent of the page); move them if the resume's header line changes.
 import { getImage } from 'astro:assets';
-import resumePage from '../assets/resume-page.png';
+import resumePage from '../lib/resume-page';
 import { url } from '../lib/url';
 import { site } from '../lib/site';
 
@@ -16,10 +16,10 @@ const full = await getImage({ src: resumePage, width: resumePage.width, format: 
 const pdf = url(site.resumePdf);
 
 const hotspots = [
-  { label: 'Call (808) 366-5691', href: 'tel:+18083665691', left: 9.2, width: 13.2 },
-  { label: `Email ${site.email}`, href: `mailto:${site.email}`, left: 23.0, width: 14.0 },
-  { label: 'LinkedIn', href: site.linkedin, left: 54.2, width: 20.8 },
-  { label: 'Portfolio website', href: 'https://kasinitosato.github.io', left: 75.8, width: 15.0 },
+  { label: 'Call (808) 366-5691', href: 'tel:+18083665691', left: 11.6, width: 12.6 },
+  { label: `Email ${site.email}`, href: `mailto:${site.email}`, left: 25.2, width: 13.8 },
+  { label: 'LinkedIn', href: site.linkedin, left: 52.0, width: 20.4 },
+  { label: 'Portfolio website', href: 'https://kasinitosato.github.io', left: 73.6, width: 14.8 },
 ];
 ---
 
@@ -128,7 +128,7 @@ const hotspots = [
     font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #8f897f;
   }
   /* Clickable areas over the contact line at the top of the page */
-  .rv-hot { position: absolute; top: 6.3%; height: 2.1%; -webkit-tap-highlight-color: transparent; }
+  .rv-hot { position: absolute; top: 7.2%; height: 1.8%; -webkit-tap-highlight-color: transparent; }
   @media (hover: hover) and (pointer: fine) {
     .rv-hot { cursor: pointer; }
     .rv-hot:hover { background: rgba(185, 171, 146, 0.25); }
