@@ -1,8 +1,16 @@
 // Draws the 1200 x 630 link preview pictures (the image that shows up when you
 // paste a link into LinkedIn, iMessage, Slack, an application form and so on).
 // The text and photos for each page come from src/lib/og.ts.
-// Colors match src/styles/global.css; the font is Work Sans, like the site.
+//
+// Each picture is a still of the site itself:
+//   - Home: the Lanakila Express hero, with the name in the serif, like the home page
+//   - Project, experience and skill pages: the page's photo under the same graphite shade
+//   - Plain pages (Resume, Contact...): the grained paper page head
+// Colors match src/styles/global.css. The fonts are fixed cuts of the site's fonts
+// (Newsreader at its display size, Archivo, IBM Plex Mono), saved in src/assets/og-fonts/
+// because the picture drawer can't read the variable font files the site uses.
 import fs from 'node:fs';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 import satori from 'satori';
 import sharp from 'sharp';
@@ -10,23 +18,30 @@ import type { OgPage } from './og';
 
 const W = 1200;
 const H = 630;
+const M = 64; // margin around the edge, like the site's page margin
 const C = {
-  ink: '#253447',
-  charcoal: '#454a50',
-  steel: '#8b959e',
-  mist: '#c6c8c5',
-  paper: '#f1f0ec',
-  white: '#fbfbf9',
-  accent: '#c8ad87',
-  light: '#dfe3e7',
+  ink: '#1a1918',
+  charcoal: '#2f2d2a',
+  steel: '#5e5a53',
+  mist: '#d4ccbf',
+  paper: '#f3efe7',
+  graphite: '#151515',
+  onDark: '#f3efe7',
+  onDarkSoft: '#a8a59e',
 };
 
 const require = createRequire(import.meta.url);
-const font = (weight: number) =>
-  fs.readFileSync(require.resolve(`@fontsource/work-sans/files/work-sans-latin-${weight}-normal.woff`));
-let fonts: { name: string; data: Buffer; weight: 500 | 600 | 800; style: 'normal' }[] | undefined;
+const local = (file: string) => fs.readFileSync(path.resolve(process.cwd(), 'src/assets/og-fonts', file));
+type Font = { name: string; data: Buffer; weight: 400 | 600 | 700; style: 'normal' };
+let fonts: Font[] | undefined;
 const loadFonts = () =>
-  (fonts ??= ([500, 600, 800] as const).map((weight) => ({ name: 'Work Sans', data: font(weight), weight, style: 'normal' as const })));
+  (fonts ??= [
+    { name: 'Newsreader', data: local('newsreader-display-360.ttf'), weight: 400, style: 'normal' },
+    { name: 'Archivo', data: local('archivo-400.ttf'), weight: 400, style: 'normal' },
+    { name: 'Archivo', data: local('archivo-650.ttf'), weight: 600, style: 'normal' },
+    { name: 'Archivo Wide', data: local('archivo-wide-700.ttf'), weight: 700, style: 'normal' },
+    { name: 'Plex Mono', data: fs.readFileSync(require.resolve('@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff')), weight: 400, style: 'normal' },
+  ]);
 
 // A tiny helper so the layouts below read like HTML
 type Node = { type: string; props: Record<string, unknown> };
@@ -38,6 +53,7 @@ const img = (src: string, width: number, height: number, style: Record<string, u
   type: 'img',
   props: { src, width, height, style: { width, height, ...style } },
 });
+const fill = { position: 'absolute', top: 0, left: 0, width: W, height: H };
 
 // The original file behind an imported photo
 const fileOf = (image: ImageMetadata) => {
@@ -58,101 +74,140 @@ async function photo(image: ImageMetadata, w: number, h: number, position = '50%
   const out = await sharp(data)
     .resize(rw, rh)
     .extract({ left: Math.round((rw - w) * (px ?? 0.5)), top: Math.round((rh - h) * (py ?? 0.5)), width: w, height: h })
-    .jpeg({ quality: 82 })
+    .jpeg({ quality: 86 })
     .toBuffer();
   return `data:image/jpeg;base64,${out.toString('base64')}`;
 }
 
 const sizeFor = (text: string, sizes: [number, number][]) => sizes.find(([max]) => text.length <= max)?.[1] ?? sizes[sizes.length - 1][1];
 
-const eyebrow = (text: string, color: string) =>
-  el('div', { fontSize: 20, fontWeight: 600, letterSpacing: 4, textTransform: 'uppercase', color }, text);
-const accentBar = (width = 72) => el('div', { width, height: 5, background: C.accent, borderRadius: 1 });
-const siteLine = (color: string) => el('div', { fontSize: 20, fontWeight: 500, color, letterSpacing: 0.5 }, 'kasinitosato.github.io');
+// The home hero's shade: dark at the bottom and left where the words sit, lighter through the middle
+const heroShade = el('div', {
+  ...fill,
+  backgroundImage:
+    'linear-gradient(0deg, rgba(21,21,21,0.92) 0%, rgba(21,21,21,0.55) 42%, rgba(21,21,21,0.15) 72%, rgba(21,21,21,0.4) 100%), ' +
+    'linear-gradient(90deg, rgba(21,21,21,0.6) 0%, rgba(21,21,21,0) 62%)',
+});
 
-// Home, and the plain pages (Resume, Experience, Contact...): light paper background and a photo strip
+// The serif headline, set light and tight like the site's h1
+const serif = (text: string, size: number, color: string, maxWidth = W - M * 2) =>
+  el('div', { fontFamily: 'Newsreader', fontSize: size, lineHeight: 0.96, letterSpacing: size * -0.03, color, maxWidth }, text);
+// The header's wide capital wordmark
+const wordmark = (color: string) =>
+  el('div', { fontFamily: 'Archivo Wide', fontWeight: 700, fontSize: 21, letterSpacing: 0.5, textTransform: 'uppercase', color }, 'Kasin Ito-Sato');
+// Mono labels, the way the site prints captions and addresses
+const mono = (text: string, color: string, size = 19) =>
+  el('div', { fontFamily: 'Plex Mono', fontSize: size, letterSpacing: 0.4, color }, text);
+
+// Home: the Lanakila Express hero, exactly as the home page opens
 async function homeLayout(page: OgPage) {
-  const stripH = 210;
-  const gap = 6;
-  const pw = Math.floor((W - gap * 2) / 3);
-  const photos = await Promise.all(page.photos.slice(0, 3).map((p, i) => photo(p.image, i === 2 ? W - 2 * (pw + gap) : pw, stripH, p.position)));
-  const isHome = page.kind === 'home';
-  const big = isHome ? 'Kasin Ito-Sato' : page.title;
+  const bg = page.photos[0] ? await photo(page.photos[0].image, W, H, page.photos[0].position ?? '50% 62%') : undefined;
   return el(
     'div',
-    { width: W, height: H, flexDirection: 'column', background: C.paper, fontFamily: 'Work Sans' },
+    { width: W, height: H, position: 'relative', background: C.graphite, fontFamily: 'Archivo' },
+    bg && img(bg, W, H, { position: 'absolute', top: 0, left: 0 }),
+    heroShade,
     el(
       'div',
-      { flex: 1, flexDirection: 'column', justifyContent: 'center', padding: '0 72px', gap: 18 },
-      isHome ? eyebrow('Portfolio', C.steel) : eyebrow('Kasin Ito-Sato', C.steel),
-      el('div', { fontSize: sizeFor(big, [[16, 92], [26, 76], [40, 60]]), fontWeight: 800, color: C.ink, letterSpacing: -2, lineHeight: 1.02 }, big),
-      el(
-        'div',
-        { alignItems: 'center', gap: 22 },
-        accentBar(),
-        el('div', { fontSize: 30, fontWeight: 500, color: C.charcoal }, isHome ? "Mechanical Engineer · LMU '27" : page.label ?? "Mechanical Engineer · LMU '27"),
-      ),
+      { position: 'absolute', left: M, right: M, bottom: 56, flexDirection: 'column' },
+      serif('Kasin Ito-Sato', 136, C.onDark),
+      el('div', { marginTop: 22, fontSize: 38, fontWeight: 600, color: C.onDark, lineHeight: 1.2 }, 'Mechanical Engineer'),
+      el('div', { marginTop: 4, fontSize: 30, fontWeight: 400, color: C.onDark, lineHeight: 1.25 }, 'BS Mechanical Engineering, Loyola Marymount University · May 2027'),
     ),
-    el('div', { height: stripH, gap, background: C.paper }, ...photos.map((src, i) => img(src, i === 2 ? W - 2 * (pw + gap) : pw, stripH))),
+    page.caption && el('div', { position: 'absolute', top: 48, left: M }, mono(page.caption, C.onDark)),
   );
 }
 
-// Skill filter pages: big category name and intro over a darkened project photo
+// Plain pages (Projects, Resume, Contact...): the grained paper page head, with the header's wordmark
+function plainLayout(page: OgPage) {
+  return el(
+    'div',
+    { width: W, height: H, flexDirection: 'column', justifyContent: 'space-between', padding: `52px ${M}px 60px`, background: C.paper, fontFamily: 'Archivo' },
+    el(
+      'div',
+      { alignItems: 'center', justifyContent: 'space-between', paddingBottom: 22, borderBottom: `1px solid ${C.mist}` },
+      wordmark(C.ink),
+      mono('Mechanical Engineer · LMU 2027', C.steel),
+    ),
+    el(
+      'div',
+      { flexDirection: 'column' },
+      serif(page.title, sizeFor(page.title, [[10, 168], [16, 140], [26, 110]]), C.ink),
+      page.label && el('div', { marginTop: 26, fontSize: 34, fontWeight: 400, color: C.charcoal, lineHeight: 1.3 }, page.label),
+    ),
+  );
+}
+
+// Skill filter pages: category name and intro over a project photo, under the graphite shade
 async function categoryLayout(page: OgPage) {
   const bg = page.photos[0] ? await photo(page.photos[0].image, W, H, page.photos[0].position) : undefined;
   return el(
     'div',
-    { width: W, height: H, position: 'relative', background: C.ink, fontFamily: 'Work Sans' },
+    { width: W, height: H, position: 'relative', background: C.graphite, fontFamily: 'Archivo' },
     bg && img(bg, W, H, { position: 'absolute', top: 0, left: 0 }),
     el('div', {
-      position: 'absolute', top: 0, left: 0, width: W, height: H,
-      backgroundImage: 'linear-gradient(90deg, rgba(37,52,71,0.94) 0%, rgba(37,52,71,0.86) 55%, rgba(37,52,71,0.62) 100%)',
+      ...fill,
+      backgroundImage: 'linear-gradient(90deg, rgba(21,21,21,0.94) 0%, rgba(21,21,21,0.84) 52%, rgba(21,21,21,0.5) 100%)',
     }),
+    el('div', { position: 'absolute', top: 52, left: M, right: M, justifyContent: 'space-between', alignItems: 'center' }, wordmark(C.onDark), mono('Projects by skill', C.onDarkSoft)),
     el(
       'div',
-      { position: 'absolute', top: 0, left: 0, width: W, height: H, flexDirection: 'column', justifyContent: 'center', padding: '0 80px', gap: 22 },
-      eyebrow('Projects · Browse by skill', C.accent),
-      el('div', { fontSize: sizeFor(page.title, [[16, 88], [26, 74]]), fontWeight: 800, color: '#fff', letterSpacing: -2, lineHeight: 1.04, maxWidth: 1000 }, page.title),
-      accentBar(),
-      el('div', { fontSize: 30, fontWeight: 500, color: C.light, lineHeight: 1.35, maxWidth: 940 }, page.intro ?? ''),
+      { position: 'absolute', left: M, right: M, bottom: 60, flexDirection: 'column' },
+      serif(page.title, sizeFor(page.title, [[16, 112], [26, 92]]), C.onDark, 1000),
+      el('div', { marginTop: 26, fontSize: 30, fontWeight: 400, color: C.onDark, lineHeight: 1.35, maxWidth: 920 }, page.intro ?? ''),
     ),
-    el('div', { position: 'absolute', left: 80, bottom: 44, fontSize: 20, fontWeight: 600, color: C.steel, letterSpacing: 0.5 }, 'Kasin Ito-Sato · kasinitosato.github.io'),
   );
 }
 
-// Project and experience pages: title over the cover photo, with a small label
+// Project and experience pages: the cover photo under the hero's shade, title in the serif
 async function projectLayout(page: OgPage) {
   const bg = page.photos[0] ? await photo(page.photos[0].image, W, H, page.photos[0].position) : undefined;
-  const titleSize = sizeFor(page.title, [[22, 76], [36, 64], [52, 54], [80, 46]]);
+  const titleSize = sizeFor(page.title, [[22, 104], [34, 88], [52, 72], [80, 60]]);
   return el(
     'div',
     {
-      width: W, height: H, position: 'relative', fontFamily: 'Work Sans', backgroundColor: C.ink,
-      // No photo: the same blueprint grid as the cards on the site
+      width: W, height: H, position: 'relative', fontFamily: 'Archivo', backgroundColor: C.graphite,
+      // No photo: a faint drawing-sheet grid on graphite
       ...(bg ? {} : {
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(243,239,231,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(243,239,231,0.06) 1px, transparent 1px)',
         backgroundSize: '60px 60px',
       }),
     },
     bg && img(bg, W, H, { position: 'absolute', top: 0, left: 0 }),
-    bg && el('div', {
-      position: 'absolute', top: 0, left: 0, width: W, height: H,
-      backgroundImage: 'linear-gradient(180deg, rgba(37,52,71,0.05) 0%, rgba(37,52,71,0.35) 40%, rgba(37,52,71,0.93) 100%)',
-    }),
+    bg && heroShade,
+    el('div', { position: 'absolute', top: 52, left: M }, wordmark(C.onDark)),
     el(
       'div',
-      { position: 'absolute', left: 72, right: 72, bottom: 60, flexDirection: 'column', gap: 18 },
-      page.label && el('div', { alignSelf: 'flex-start', padding: '8px 16px', background: C.accent, color: C.ink, fontSize: 20, fontWeight: 600, letterSpacing: 3, textTransform: 'uppercase', borderRadius: 3 }, page.label),
-      el('div', { fontSize: titleSize, fontWeight: 800, color: '#fff', letterSpacing: -1.5, lineHeight: 1.06 }, page.title),
-      el('div', { fontSize: 22, fontWeight: 600, color: C.light }, 'Kasin Ito-Sato · Mechanical Engineer'),
+      { position: 'absolute', left: M, right: M, bottom: 56, flexDirection: 'column' },
+      serif(page.title, titleSize, C.onDark),
+      page.label && el('div', { marginTop: 22, fontSize: 32, fontWeight: 600, color: C.onDark, lineHeight: 1.2 }, page.label),
     ),
   );
 }
 
+// Fine paper grain, the same idea as the site's background: noise multiplied over the picture
+let grain: Buffer | undefined;
+async function paperGrain() {
+  if (grain) return grain;
+  const px = Buffer.alloc(W * H);
+  let seed = 7;
+  for (let i = 0; i < px.length; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    px[i] = 255 - ((seed >> 16) % 18); // 238 to 255: light speckle, so the paper only darkens a touch
+  }
+  return (grain = await sharp(px, { raw: { width: W, height: H, channels: 1 } }).blur(0.5).toColourspace('srgb').png().toBuffer());
+}
+
 export async function renderOgImage(page: OgPage) {
-  const tree = page.kind === 'category' ? await categoryLayout(page) : page.kind === 'project' ? await projectLayout(page) : await homeLayout(page);
+  const tree =
+    page.kind === 'home' ? await homeLayout(page)
+    : page.kind === 'category' ? await categoryLayout(page)
+    : page.kind === 'project' ? await projectLayout(page)
+    : plainLayout(page);
   const svg = await satori(tree as any, { width: W, height: H, fonts: loadFonts() });
-  return sharp(Buffer.from(svg)).jpeg({ quality: 84, mozjpeg: true }).toBuffer();
+  let out = sharp(Buffer.from(svg));
+  if (page.kind === 'plain') out = sharp(await out.png().toBuffer()).composite([{ input: await paperGrain(), blend: 'multiply' }]);
+  return out.jpeg({ quality: 86, mozjpeg: true }).toBuffer();
 }
 
 // Keeps link preview descriptions short enough that apps don't cut them off mid-word
