@@ -1,6 +1,6 @@
 ---
 // A two-page highlights version of the portfolio for job applications
-// (letter landscape). Not linked from the site. To make the PDF, run
+// (letter landscape), in the same look as the site. Not linked from the site menus. To make the PDF, run
 // `npm run portfolio-pdf` (builds the site, then prints this page with Chrome).
 //
 // Page 1: the first two featured projects.
@@ -8,12 +8,20 @@
 // Featured projects and their measured results come from src/lib/featured.ts;
 // the Go-Kart card is written below (Punahou pages have no summary or role fields),
 // and the strip's projects are listed in `more`.
-import '@fontsource-variable/work-sans';
+import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource-variable/newsreader/opsz.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import { Image } from 'astro:assets';
 import { getEntry } from 'astro:content';
 import { site } from '../../lib/site';
 import { featured } from '../../lib/featured';
 import goKartPhoto from '../../assets/featured/go-kart.jpg';
+// The rope robot's cover (plush passengers) reads as a toy at this size; the gear train shows the build
+import gearTrain from '../../content/projects/rope-climbing-robot/09_gear_train_top_view.jpg';
+const coverOverride: Record<string, { image: ImageMetadata; position?: string }> = {
+  'rope-climbing-robot': { image: gearTrain, position: '60% 50%' },
+};
 
 const siteHost = 'kasinitosato.github.io';
 const more = ['sae-aero', 'toggle-clamp-dfm', 'hydraulic-system', 'heat-sink'];
@@ -60,15 +68,15 @@ const featuredCards: Card[] = await Promise.all(
     if (!data.cover) throw new Error(`Featured project "${f.slug}" needs a cover photo`);
     return {
       slug: `projects/${f.slug}`,
-      eyebrow: `Project · ${[data.course, data.date].filter(Boolean).join(' · ')}`,
+      eyebrow: [data.course, data.date].filter(Boolean).join(' · '),
       title: data.title,
       summary: data.summary,
       results: f.results,
       note: f.note,
       role: data.role,
       tools: data.tools.slice(0, 7),
-      cover: data.cover,
-      coverPosition: data.coverPosition,
+      cover: coverOverride[f.slug]?.image ?? data.cover,
+      coverPosition: coverOverride[f.slug]?.position ?? data.coverPosition,
     };
   }),
 );
@@ -90,19 +98,20 @@ const pages = [allCards.slice(0, 2), allCards.slice(2, 4)];
       <section class="page">
         {pi === 0 && (
           <header class="masthead">
-            <div>
-              <p class="eyebrow">Portfolio highlights</p>
+            <div class="who">
               <h1>{site.name}</h1>
-              <p class="lead">
-                Mechanical engineering student at Loyola Marymount University (BS, May 2027).
-                Design, build and test work, with measured results reported against predictions.
-              </p>
+              <p class="role-line">Mechanical Engineer</p>
+              <p class="degree">BS Mechanical Engineering, Loyola Marymount University · May 2027</p>
             </div>
-            <ul class="contact">
-              <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
-              <li><a href={site.linkedin}>linkedin.com/in/kasin-ito-sato</a></li>
-              <li><a href={`https://${siteHost}`}>{siteHost}</a></li>
-            </ul>
+            <!-- The same facts as the title block on the home page, plus how to reach me -->
+            <dl class="title-block">
+              <div><dt>Graduates</dt><dd>May 2027</dd></div>
+              <div><dt>FE exam</dt><dd>Mechanical, November 2026</dd></div>
+              <div><dt>Based in</dt><dd>Los Angeles, CA</dd></div>
+              <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+              <div><dt>LinkedIn</dt><dd><a href={site.linkedin}>in/kasin-ito-sato</a></dd></div>
+              <div><dt>Portfolio</dt><dd><a href={`https://${siteHost}`}>{siteHost}</a></dd></div>
+            </dl>
           </header>
         )}
 
@@ -110,15 +119,15 @@ const pages = [allCards.slice(0, 2), allCards.slice(2, 4)];
           {cards.map((c) => (
             <article class="card">
               <figure class="photo">
-                <Image src={c.cover} alt="" width={1400} quality={78} format="jpg" style={c.coverPosition ? `object-position: ${c.coverPosition}` : undefined} />
+                <Image src={c.cover} alt="" width={1400} quality={78} format="jpg" loading="eager" style={c.coverPosition ? `object-position: ${c.coverPosition}` : undefined} />
               </figure>
               <div class="body">
-                <p class="eyebrow">{c.eyebrow}</p>
+                <p class="label">{c.eyebrow}</p>
                 <h2><a href={`https://${siteHost}/${c.slug}/`}>{c.title}</a></h2>
                 {c.summary && <p class="summary">{c.summary}</p>}
                 {c.results && (
                   <div class="result">
-                    <dl>
+                    <dl style={`grid-template-columns: repeat(${c.results.length}, 1fr)`}>
                       {c.results.map((r) => (
                         <div><dt>{r.label}</dt><dd>{r.value}</dd></div>
                       ))}
@@ -142,7 +151,7 @@ const pages = [allCards.slice(0, 2), allCards.slice(2, 4)];
 
         {pi === 1 && (
           <aside class="more">
-            <h2>More projects at <a href={`https://${siteHost}/projects/`}>{siteHost}/projects</a></h2>
+            <h2>More projects <a href={`https://${siteHost}/projects/`}>{siteHost}/projects</a></h2>
             <ul>
               {moreProjects.map((p) => (
                 <li>
@@ -155,45 +164,53 @@ const pages = [allCards.slice(0, 2), allCards.slice(2, 4)];
         )}
 
         <footer>
-          <span>{site.name} · Portfolio highlights</span>
-          <span>{pi + 1} of {pages.length}</span>
+          <span class="mark">{site.name}</span>
+          <span>Portfolio highlights · {pi + 1} of {pages.length}</span>
         </footer>
       </section>
     ))}
   </body>
 </html>
 
+<!-- The site's look (src/styles/global.css): paper, graphite, Newsreader headings,
+     Archivo text, IBM Plex Mono for labels and measurements, square edges and hairline rules -->
 <style is:global>
   @page { size: 11in 8.5in; margin: 0; }
 
   :root {
-    --ink: #253447;
-    --charcoal: #454a50;
-    --steel: #5f6a75;
-    --mist: #c6c8c5;
-    --paper: #f1f0ec;
-    --white: #fbfbf9;
-    --accent: #c8ad87;
+    --ink: #1a1918;
+    --charcoal: #2f2d2a;
+    --steel: #5e5a53;
+    --mist: #d4ccbf;
+    --paper: #f3efe7;
+    --paper-up: #e8e2d6;
+    --graphite: #151515;
+    --font: 'Archivo Variable', 'Helvetica Neue', Arial, sans-serif;
+    --serif: 'Newsreader Variable', Georgia, serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
   }
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
     margin: 0;
-    background: #888;
+    background: #8a867f;
     color: var(--charcoal);
-    font: 9.5pt/1.45 "Work Sans Variable", system-ui, sans-serif;
+    font: 9.2pt/1.45 var(--font);
   }
   @media print { body { background: none; } }
+  ::selection { background: var(--ink); color: var(--paper); }
+  p, li, dd { text-wrap: pretty; } /* no single word left alone on the last line */
   a { color: inherit; text-decoration: none; }
   img { display: block; width: 100%; height: 100%; object-fit: cover; }
   figure { margin: 0; }
-  ul { margin: 0; padding: 0; list-style: none; }
-  h1, h2 { color: var(--ink); letter-spacing: -0.02em; line-height: 1.1; font-weight: 800; margin: 0; }
+  ul, dl { margin: 0; padding: 0; list-style: none; }
+  dd { margin: 0; }
+  h1, h2 { color: var(--ink); font-family: var(--serif); font-optical-sizing: auto; font-weight: 380; margin: 0; }
 
   .page {
     width: 11in;
     height: 8.5in;
-    padding: 0.45in 0.5in 0.55in;
+    padding: 0.45in 0.5in 0.6in;
     background: var(--paper);
     position: relative;
     overflow: hidden;
@@ -201,76 +218,86 @@ const pages = [allCards.slice(0, 2), allCards.slice(2, 4)];
     margin: 0 auto 0.25in;
     display: flex;
     flex-direction: column;
-    gap: 0.25in;
+    gap: 0.24in;
   }
   @media print { .page { margin: 0; } }
 
-  .eyebrow { font-size: 8pt; font-weight: 600; color: var(--steel); margin: 0 0 0.06in; }
+  /* Mono capitals, the way a drawing prints its labels */
+  .label, .title-block dt, .result dt, footer {
+    font-family: var(--mono);
+    font-size: 6.8pt;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--steel);
+  }
 
   .masthead {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     gap: 0.4in;
-    padding-bottom: 0.18in;
-    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 0.2in;
+    border-bottom: 1px solid var(--ink);
   }
-  .masthead h1 { font-size: 30pt; margin-bottom: 0.06in; }
-  .masthead .lead { font-size: 10.5pt; margin: 0; max-width: 6.2in; }
-  .contact { text-align: right; font-size: 9pt; font-weight: 600; color: var(--ink); line-height: 1.6; white-space: nowrap; }
+  .masthead h1 { font-size: 40pt; line-height: 0.95; letter-spacing: -0.035em; margin-bottom: 0.1in; }
+  .role-line { margin: 0; font-size: 11pt; font-weight: 650; color: var(--ink); }
+  .degree { margin: 0.02in 0 0; font-size: 10pt; color: var(--charcoal); }
+
+  /* Engineering title block: ruled cells, label over value */
+  .title-block {
+    display: grid;
+    grid-template-columns: 1.05fr 1.4fr 1.25fr;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--mist);
+    flex: none;
+  }
+  .title-block div { padding: 0.05in 0.09in 0.06in; border-right: 1px solid var(--mist); border-bottom: 1px solid var(--mist); }
+  .title-block dt { margin-bottom: 0.01in; }
+  .title-block dd { font-size: 8.6pt; color: var(--ink); white-space: nowrap; }
 
   /* Cards side by side share rows, so their photos match in height and their titles line up */
-  .cards { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(1.5in, 1fr) auto; column-gap: 0.3in; }
-  .card {
-    display: grid;
-    grid-row: span 2;
-    grid-template-rows: subgrid;
-    row-gap: 0;
-    background: var(--white);
-    border: 1px solid var(--mist);
-    border-radius: 14px 0 14px 0;
-    overflow: hidden;
-    min-height: 0;
-  }
-  .photo { min-height: 0; }
-  .body { padding: 0.16in 0.2in 0.18in; }
-  .card h2 { font-size: 15pt; margin-bottom: 0.07in; }
+  .cards { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(1.5in, 1fr) auto; column-gap: 0.34in; }
+  .card { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0; min-height: 0; }
+  .photo { min-height: 0; background: var(--paper-up); }
+  .body { padding-top: 0.13in; }
+  .card .label { margin: 0 0 0.05in; }
+  .card h2 { font-size: 19pt; line-height: 1.02; letter-spacing: -0.02em; margin-bottom: 0.07in; }
   .summary { margin: 0 0 0.1in; }
-  .result {
-    background: var(--ink);
-    color: #dfe3e7;
-    padding: 0.08in 0.13in;
-    border-radius: 10px 0 10px 0;
-    margin-bottom: 0.1in;
-  }
-  .result dl { margin: 0; }
-  .result dl div { display: flex; justify-content: space-between; gap: 0.15in; padding: 0.015in 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
-  .result dl div:last-child { border-bottom: 0; font-weight: 700; color: #fff; }
-  .result dt { color: #a9b3bd; }
-  .result dd { margin: 0; text-align: right; }
-  .result p { margin: 0.04in 0 0; font-size: 8.3pt; line-height: 1.4; }
-  .highlights { margin-bottom: 0.1in; }
-  .highlights li { position: relative; padding-left: 0.15in; margin-bottom: 0.05in; }
-  .highlights li::before { content: ""; position: absolute; left: 0; top: 0.065in; width: 0.065in; height: 0.065in; background: var(--accent); }
-  .role { margin: 0 0 0.1in; font-size: 8.8pt; }
-  .role strong { color: var(--ink); }
-  .tags { display: flex; flex-wrap: wrap; gap: 0.04in; }
-  .tags li { font-size: 7.3pt; padding: 0.01in 0.065in; border: 1px solid var(--mist); border-radius: 2px; background: var(--paper); }
 
-  .more h2 { font-size: 11pt; margin-bottom: 0.08in; }
-  .more h2 a { color: var(--steel); font-weight: 600; }
-  .more ul { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.22in; }
-  .more li { border-top: 2px solid var(--accent); padding-top: 0.06in; font-size: 8pt; line-height: 1.4; }
-  .more li a { display: block; font-weight: 700; color: var(--ink); font-size: 8.8pt; margin-bottom: 0.03in; }
+  /* Measured results: one block per value, the last (the measured one) in graphite */
+  .result { margin-bottom: 0.1in; }
+  .result dl { display: grid; gap: 1px; }
+  .result dl div { padding: 0.06in 0.1in 0.07in; background: var(--paper-up); }
+  .result dl div:last-child { background: var(--graphite); }
+  .result dl div:last-child dt { color: #a8a59e; }
+  .result dl div:last-child dd { color: var(--paper); }
+  .result dt { margin-bottom: 0.02in; }
+  .result dd { font-family: var(--mono); font-size: 10.5pt; font-weight: 500; line-height: 1.2; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .result p { margin: 0.06in 0 0; font-size: 8.3pt; line-height: 1.4; color: var(--steel); }
+
+  .highlights { margin-bottom: 0.1in; border-top: 1px solid var(--mist); }
+  .highlights li { padding: 0.05in 0; border-bottom: 1px solid var(--mist); }
+  .role { margin: 0 0 0.1in; font-size: 8.8pt; }
+  .role strong { color: var(--ink); font-weight: 650; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.04in; }
+  .tags li { font-family: var(--mono); font-size: 6.6pt; padding: 0.02in 0.06in; border: 1px solid var(--mist); color: var(--charcoal); }
+
+  .more { border-top: 1px solid var(--ink); padding-top: 0.1in; }
+  .more h2 { font-size: 13pt; letter-spacing: -0.01em; margin-bottom: 0.1in; display: flex; align-items: baseline; justify-content: space-between; }
+  .more h2 a { font-family: var(--mono); font-size: 7pt; letter-spacing: 0.02em; color: var(--steel); }
+  .more ul { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.24in; }
+  .more li { font-size: 7.9pt; line-height: 1.4; }
+  .more li a { display: block; font-weight: 650; color: var(--ink); font-size: 8.6pt; line-height: 1.25; margin-bottom: 0.04in; }
 
   footer {
     position: absolute;
     left: 0.5in;
     right: 0.5in;
-    bottom: 0.22in;
+    bottom: 0.24in;
     display: flex;
     justify-content: space-between;
-    font-size: 7.5pt;
-    color: var(--steel);
+    align-items: baseline;
   }
+  footer .mark { font-family: var(--font); font-size: 7pt; font-weight: 700; font-stretch: 125%; letter-spacing: 0.02em; color: var(--ink); }
 </style>
